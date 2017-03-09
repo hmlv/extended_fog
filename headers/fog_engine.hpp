@@ -1,5 +1,5 @@
 /**************************************************************************************************
- * Authors: 
+ * Authors:
  *   Zhiyuan Shao, Jian He
  *
  * Declaration:
@@ -47,9 +47,9 @@ enum global_target
 //VA stands for the vertex attribute
 template <typename VA, typename U, typename T>
 class fog_engine{
-        
+
         //Fog_program<VA, U, T> * base_ptr;
-        
+
         Fog_program<VA, U, T> * m_alg_ptr;
 
         //global variables
@@ -74,12 +74,12 @@ class fog_engine{
         //The reasons to use another mmaped file to access the attribute file (in SCATTER phase):
         //  It is really hard if not possible to arrange the attribute buffer by repeatively reading
         //  the attribute file in/replace, since there may be different status among the cpu threads.
-        //  For ex., cpu0 may need to access segment 1, while other cpu threads need to access the 
-        //  segment 2. 
+        //  For ex., cpu0 may need to access segment 1, while other cpu threads need to access the
+        //  segment 2.
         //  The other reason is that, since file reading and buffer replacing is done intermediatively,
-        //  there will be (and must be) a waste at the last step. 
+        //  there will be (and must be) a waste at the last step.
         //  Think about the case that cpu threads filled up their update buffer, and ready to finish
-        //  their current SCATTER phase. But remember, at this time, there is another file reading 
+        //  their current SCATTER phase. But remember, at this time, there is another file reading
         //  conducting on the background, which is useless and the following steps (i.e., GATHER)
         //  must wait till the completion of this background operation.
         int attr_fd;
@@ -96,7 +96,7 @@ class fog_engine{
         time_t iter_end_time;
 
         u32_t seg_read_counts;
-        u32_t seg_write_counts; 
+        u32_t seg_write_counts;
 
         double min_stdev;
         double max_stdev;
@@ -159,6 +159,13 @@ class fog_engine{
 
         void create_subtask_dataset();
 
+        void target_init_sched_buf(const char * buf_for_write);
+
+        void update_vertices(u32_t CONTEXT_PHASE);
+
+        u32_t cal_number_of_active_vertices(u32_t segment_id, u32_t CONTEXT_PHASE);
+
+        static void add_schedule_no_optimize(u32_t task_vid, u32_t CONTEXT_PHASE);
 };
 template <typename VA, typename U, typename T>
 index_vert_array<T> * fog_engine<VA, U, T>::vert_index;
@@ -182,4 +189,4 @@ template <typename VA, typename U, typename T>
 io_queue * fog_engine<VA, U, T>::fog_io_queue;
 
 #endif
-		
+

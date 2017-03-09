@@ -1,5 +1,5 @@
 /**************************************************************************************************
- * Authors: 
+ * Authors:
  *   Zhiyuan Shao
  *
  * Declaration:
@@ -44,7 +44,12 @@ class index_vert_array{
         unsigned long long in_edge_file_length;
         vert_index * in_vert_array_header;
         in_edge * in_edge_array_header;
-	
+
+
+        u32_t segment_cap;
+        const char* vert_attr_array; //vert_attr_array, used for get neighbour's attribute
+        const char* vert_attr_buf;   //vert_attr_buf, used for get neighbour's attribute
+
 	public:
 		index_vert_array();
 		~index_vert_array();
@@ -55,5 +60,42 @@ class index_vert_array{
 		//return the "which"-th out edge of vid
 		void get_out_edge( unsigned int vid, unsigned int which, T &ret);
         void get_in_edge(unsigned int vid, unsigned int which, in_edge &ret);
+        u32_t get_out_neighbour( unsigned int vid, unsigned int which );
+        u32_t get_in_neighbour( unsigned int vid, unsigned int which );
+
+        void set_segment_cap(u32_t cap);
+        void set_vert_attr_ptr(const char * va_array, const char * va_buf);
+
+        template <typename VERT_ATTR> const VERT_ATTR * get_in_neigh_attr(u32_t vid, u32_t which)
+        {
+            if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
+            {
+                //return NULL;
+                PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
+            }
+            u32_t neigh_id = in_edge_array_header[ in_vert_array_header[vid].offset + which ].get_src_value();
+            if(vid / segment_cap == neigh_id / segment_cap){
+                return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);
+            }
+            else{
+                return &(((VERT_ATTR*)vert_attr_array)[neigh_id]);
+            }
+        }
+        template <typename VERT_ATTR> const VERT_ATTR * get_out_neigh_attr(u32_t vid, u32_t which)
+        {
+            if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
+            {
+                //return NULL;
+                PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
+            }
+            u32_t neigh_id = edge_array_header[ vert_array_header[vid].offset + which ].get_dest_value();
+            if(vid / segment_cap == neigh_id / segment_cap){
+                return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);
+            }
+            else{
+                return &(((VERT_ATTR*)vert_attr_array)[neigh_id]);
+            }
+
+        }
 };
 #endif

@@ -1,10 +1,10 @@
 /**************************************************************************************************
- * Authors: 
+ * Authors:
  *   Zhiyuan Shao
  *
  * Routines:
  *   Manipulate the mmapped files
- * 
+ *
  * Notes:
  *    1.debug(function:num_edges())
  *      modified by Huiming Lv    2015/4/14
@@ -139,7 +139,7 @@ template <typename T>
 unsigned int index_vert_array<T>::num_out_edges( unsigned int vid )
 {
 	unsigned long long start_edge=0L, end_edge=0L;
-	
+
 	start_edge = vert_array_header[vid].offset;
     //if (vid == 152)
     //    PRINT_DEBUG("start_edge = %lld\n", start_edge);
@@ -161,7 +161,7 @@ unsigned int index_vert_array<T>::num_out_edges( unsigned int vid )
         }
     }
 	if( end_edge < start_edge ){
-        PRINT_DEBUG("vid = %d, start_edge = %llu, end_edge = %llu\n", 
+        PRINT_DEBUG("vid = %d, start_edge = %llu, end_edge = %llu\n",
                 vid, start_edge, end_edge);
 		PRINT_ERROR( "edge disorder detected!\n" );
 		return 0;
@@ -173,7 +173,7 @@ template <typename T>
 unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
 {
 	unsigned long long start_edge=0L, end_edge=0L;
-	
+
     if (mode == OUT_EDGE)
     {
         start_edge = vert_array_header[vid].offset;
@@ -191,7 +191,7 @@ unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
                     end_edge = vert_array_header[i].offset -1;
                     break;
                 }
-                if (i == gen_config.max_vert_id)  //means this vertex is the last vertex which has out_edge   
+                if (i == gen_config.max_vert_id)  //means this vertex is the last vertex which has out_edge
                 {
                     end_edge = gen_config.num_edges;
                     break;
@@ -222,7 +222,7 @@ unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
                     end_edge = in_vert_array_header[i].offset -1;
                     break;
                 }
-                if (i == gen_config.max_vert_id) //means this vertex is the last vertex which has in_edge 
+                if (i == gen_config.max_vert_id) //means this vertex is the last vertex which has in_edge
                 {
                     end_edge = gen_config.num_edges;
                     break;
@@ -262,6 +262,79 @@ void index_vert_array<T>::get_in_edge( unsigned int vid, unsigned int which, in_
 	ret = (in_edge)in_edge_array_header[ in_vert_array_header[vid].offset + which ];
 
 }
+
+template <typename T>
+u32_t index_vert_array<T>::get_out_neighbour( unsigned int vid, unsigned int which)
+{
+	if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
+    {
+        //return NULL;
+        PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
+    }
+
+	return edge_array_header[ vert_array_header[vid].offset + which ].get_dest_value();
+}
+
+template <typename T>
+u32_t index_vert_array<T>::get_in_neighbour( unsigned int vid, unsigned int which)
+{
+	if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
+    {
+        //return NULL;
+        PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
+    }
+
+	return in_edge_array_header[ in_vert_array_header[vid].offset + which ].get_src_value();
+}
+
+template <typename T>
+void index_vert_array<T>::set_segment_cap(u32_t cap){
+    segment_cap = cap;
+}
+
+template <typename T>
+void index_vert_array<T>::set_vert_attr_ptr(const char * va_array, const char * va_buf){
+    vert_attr_array = va_array;
+    vert_attr_buf   = va_buf;
+}
+
+/*
+template <typename T>
+template <typename VERT_ATTR>
+const VERT_ATTR * index_vert_array<T>::get_out_neigh_attr(unsigned int vid, unsigned int which){
+	if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
+    {
+        //return NULL;
+        PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
+    }
+    u32_t neigh_id = edge_array_header[ vert_array_header[vid].offset + which ].get_dest_value();
+    if(vid / segment_cap = neigh_id / segment_cap){
+        return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);
+    }
+    else{
+        return &(((VERT_ATTR*)vert_attr_array)[neigh_id]);
+    }
+}
+*/
+
+/*
+template <typename T>
+template <typename VERT_ATTR>
+const VERT_ATTR * index_vert_array<T>::get_in_neigh_attr(unsigned int vid, unsigned int which){
+	if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
+    {
+        //return NULL;
+        PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
+    }
+	u32_t neigh_id = in_edge_array_header[ in_vert_array_header[vid].offset + which ].get_src_value();
+    if(vid / segment_cap = neigh_id / segment_cap){
+        return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);
+    }
+    else{
+        return &(((VERT_ATTR*)vert_attr_array)[neigh_id]);
+    }
+}
+*/
 
 //the explicit instantiation part
 //template class index_vert_array<type1_edge>;

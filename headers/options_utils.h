@@ -1,12 +1,12 @@
 /**************************************************************************************************
- * Authors: 
- *   Zhiyuan Shao, Jian He, Huiming Lv 
+ * Authors:
+ *   Zhiyuan Shao, Jian He, Huiming Lv
  *
  * Declaration:
  *   Program parameter parsing.
  *
  * Notes:
- *   1.modify bfs::bfs_root to bfs::bfs-root by Huiming Lv   2014/12/21 
+ *   1.modify bfs::bfs_root to bfs::bfs-root by Huiming Lv   2014/12/21
  *************************************************************************************************/
 
 #ifndef __OPTIONS_UTILS_H__
@@ -24,11 +24,11 @@ static void setup_options_fog(int argc, const char* argv[])
 {
   desc.add_options()
 	( "help,h", "Display help message")
-	( "graph,g", boost::program_options::value<std::string>()->required(), 
+	( "graph,g", boost::program_options::value<std::string>()->required(),
 		"The name of the graph to be processed (i.e., the .desc file).")
-	//( "application,a", boost::program_options::value<std::string>()->required(), 
+	//( "application,a", boost::program_options::value<std::string>()->required(),
 	//	"The name of the application, e.g., pagerank, sssp, bfs.")
-    //("in-edge,i", boost::program_options::value<bool>()->default_value(false),"With or without in-edge, backtrace-algorithm(WCC, SCC) must be true!")
+    ("in-edge,i", boost::program_options::value<bool>()->default_value(false),"With or without in-edge, backtrace-algorithm must be true!")
 	//following are system parameters
     ( "memory,m", boost::program_options::value<unsigned long>()->default_value(1024), //default 1GB
      "Size of the buffer for writing (unit is MB)")

@@ -7,7 +7,7 @@
  *
  * Notes:
  *
- * 
+ *
  * ***************************************************************************************************/
 
 
@@ -77,7 +77,7 @@ unsigned int Fog_adapter::init(int argc, const char ** argv)
     setup_options_fog(argc, argv);
     //prog_name_app = vm["application"].as<std::string>();
     std::string prog_name = argv[0];
-    prog_name_app = prog_name.substr(prog_name.find_last_of("/")+1); 
+    prog_name_app = prog_name.substr(prog_name.find_last_of("/")+1);
     desc_name = vm["graph"].as<std::string>();
 
     time_t timep;
@@ -133,8 +133,8 @@ unsigned int Fog_adapter::init(int argc, const char ** argv)
 
     unsigned int type1_or_type2 = pt.get<u32_t>("description.edge_type");
     bool with_inedge = pt.get<bool>("description.with_in_edge");
-    //bool i_in_edge = vm["in-edge"].as<bool>();
-    bool i_in_edge = true;
+    bool i_in_edge = vm["in-edge"].as<bool>();
+    //bool i_in_edge = true;
     if(i_in_edge)
     {
         if(with_inedge)
@@ -163,26 +163,26 @@ unsigned int Fog_adapter::init(int argc, const char ** argv)
 }
 
 
-/*                      
+/*
  * this function will flush the content of buffer to file, fd
  * the length of the buffer should be "size".
  * Returns: -1 means failure
- * on success, will return the number of bytes that are actually 
- * written.         
- */                     
+ * on success, will return the number of bytes that are actually
+ * written.
+ */
 int flush_buffer_to_file( int fd, char* buffer, unsigned int size )
-{                       
+{
     unsigned int n, offset, remaining, res;
-    n = offset = 0; 
+    n = offset = 0;
     remaining = size;
-    while(n<size){  
+    while(n<size){
         res = write( fd, buffer+offset, remaining);
-        n += res;   
+        n += res;
         offset += res;
         remaining = size-n;
-    }       
+    }
     return n;
-}          
+}
 
 struct mmap_config mmap_file(std::string file_name)
 {
@@ -234,15 +234,15 @@ bool in_mem(struct task_config * t_config, size_t attr_size)
 {
     struct sysinfo sysi;
     u64_t require_size = 0;
-    
+
     sysinfo(&sysi);
     //edge+index
     require_size += get_file_size(t_config->edge_file_name);
     require_size += get_file_size(t_config->vert_file_name);
     require_size += get_file_size(t_config->in_edge_file_name);
     require_size += get_file_size(t_config->in_vert_file_name);
-    
-    require_size = require_size + ((t_config->max_vert_id+1) * attr_size * 3); 
+
+    require_size = require_size + ((t_config->max_vert_id+1) * attr_size * 3);
 
     //std::cout<<require_size<<std::endl;
     //std::cout<<sysi.totalram<<std::endl;
@@ -252,5 +252,5 @@ bool in_mem(struct task_config * t_config, size_t attr_size)
         return true;
     }
 
-    return false;  
-}    
+    return false;
+}
