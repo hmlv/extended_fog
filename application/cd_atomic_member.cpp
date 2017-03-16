@@ -11,20 +11,22 @@
 #include "fog_program.h"
 #include "fog_task.h"
 #include "../fogsrc/fog_task.cpp"
+#include <atomic>
 
 //this structure will define the "attribute" of one vertex, the only member will be the label
 // value of the vertex
 struct community_detection_vert_attr{
-	u32_t label;
+	//u32_t label;
+    std::atomic<uint32_t> label;
 };
 
 //template <typename VERT_ATTR, typename ALG_UPDATE, typename T>
 template <typename T>
-class community_detection_program : public Fog_program<community_detection_vert_attr, community_detection_vert_attr, T>
+class community_detection_program : public Fog_program<community_detection_vert_attr, char, T>
 {
 	public:
 
-        community_detection_program(int p_forward_backward_phase, bool p_init_sched, bool p_set_forward_backward):Fog_program<community_detection_vert_attr, community_detection_vert_attr, T>(p_forward_backward_phase, p_init_sched, p_set_forward_backward)
+        community_detection_program(int p_forward_backward_phase, bool p_init_sched, bool p_set_forward_backward):Fog_program<community_detection_vert_attr, char, T>(p_forward_backward_phase, p_init_sched, p_set_forward_backward)
         {
             this->need_all_neigh = true;
         }
@@ -33,7 +35,7 @@ class community_detection_program : public Fog_program<community_detection_vert_
         void init( u32_t vid, community_detection_vert_attr* this_vert, index_vert_array<T> * vert_index )
         {
             this_vert->label = vid;
-            fog_engine<community_detection_vert_attr, community_detection_vert_attr, T>::add_schedule_no_optimize(vid, this->CONTEXT_PHASE);
+            fog_engine<community_detection_vert_attr, char, T>::add_schedule_no_optimize(vid, this->CONTEXT_PHASE);
         }
 
 		// update one vertex. Explain the parameters:
@@ -66,7 +68,8 @@ class community_detection_program : public Fog_program<community_detection_vert_
                 curr_label = vert_attr_array[neigh_id].label;
                 */
                 neigh_attr = vert_index->template get_in_neigh_attr<community_detection_vert_attr>(vid, i);
-                curr_label = neigh_attr->label;
+                //curr_label = neigh_attr->label;
+                curr_label = neigh_attr->label.load(std::memory_order_relaxed);
                 counts_map_iter = counts_map.find(curr_label);
                 if(counts_map.end() == counts_map_iter){
                     counts_map.insert(std::pair<u32_t, u32_t>(curr_label, 1));
@@ -88,7 +91,8 @@ class community_detection_program : public Fog_program<community_detection_vert_
                 curr_label = vert_attr_array[neigh_id].label;
                 */
                 neigh_attr = vert_index->template get_out_neigh_attr<community_detection_vert_attr>(vid, i);
-                curr_label = neigh_attr->label;
+                //curr_label = neigh_attr->label;
+                curr_label = neigh_attr->label.load(std::memory_order_relaxed);
                 counts_map_iter = counts_map.find(curr_label);
                 if(counts_map.end() == counts_map_iter){
                     counts_map.insert(std::pair<u32_t, u32_t>(curr_label, 1));
@@ -106,12 +110,9 @@ class community_detection_program : public Fog_program<community_detection_vert_
             if(max_label != this_vert->label){
                 //if(max_count > 1){
 
-                    if(this->loop_counter == 200 || this->loop_counter == 199){
-                        PRINT_DEBUG_TEST_LOG("max_count > 1, vid = %u, old_label = %u, new_label = %u\n", vid, this_vert->label, max_label);
-                    }
-
-                    this_vert->label = max_label;
-                    fog_engine<community_detection_vert_attr, community_detection_vert_attr, T>::add_schedule_no_optimize(vid, this->CONTEXT_PHASE);
+                    //this_vert->label = max_label;
+                    this_vert->label.store(max_label, std::memory_order_relaxed);
+                    fog_engine<community_detection_vert_attr, char, T>::add_schedule_no_optimize(vid, this->CONTEXT_PHASE);
                     /*
                 }
                 else if(1==max_count && max_label > this_vert->label){
@@ -171,10 +172,13 @@ class community_detection_program : public Fog_program<community_detection_vert_
 template <typename T>
 void start_engine()
 {
-    Fog_program<community_detection_vert_attr, community_detection_vert_attr, T> *cd_ptr = new community_detection_program<T>(FORWARD_TRAVERSAL, true, false);
+    //Fog_program<community_detection_vert_attr, community_detection_vert_attr, T> *cd_ptr = new community_detection_program<T>(FORWARD_TRAVERSAL, true, false);
+    Fog_program<community_detection_vert_attr, char, T> *cd_ptr = new community_detection_program<T>(FORWARD_TRAVERSAL, true, false);
 
-    fog_engine<community_detection_vert_attr, community_detection_vert_attr, T> * eng;
-    eng = new fog_engine<community_detection_vert_attr, community_detection_vert_attr, T>(TARGET_ENGINE);
+    //fog_engine<community_detection_vert_attr, community_detection_vert_attr, T> * eng;
+    fog_engine<community_detection_vert_attr, char, T> * eng;
+    //eng = new fog_engine<community_detection_vert_attr, community_detection_vert_attr, T>(TARGET_ENGINE);
+    eng = new fog_engine<community_detection_vert_attr, char, T>(TARGET_ENGINE);
 
     struct task_config * ptr_task_config = new struct task_config;
     ptr_task_config->min_vert_id = gen_config.min_vert_id;
@@ -188,8 +192,10 @@ void start_engine()
     ptr_task_config->in_vert_file_name = gen_config.in_vert_file_name;
     ptr_task_config->in_edge_file_name = gen_config.in_edge_file_name;
     ptr_task_config->with_in_edge = gen_config.with_in_edge;
-    Fog_task<community_detection_vert_attr, community_detection_vert_attr, T> *task
-        = new Fog_task<community_detection_vert_attr, community_detection_vert_attr, T>();
+    //Fog_task<community_detection_vert_attr, community_detection_vert_attr, T> *task
+       // = new Fog_task<community_detection_vert_attr, community_detection_vert_attr, T>();
+    Fog_task<community_detection_vert_attr, char, T> *task
+        = new Fog_task<community_detection_vert_attr, char, T>();
     task->set_task_config(ptr_task_config);
     task->set_task_id(0);
     task->set_alg_ptr(cd_ptr);

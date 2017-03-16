@@ -102,7 +102,7 @@ ENGINE_SRC = fog_engine.o bitmap.o disk_thread.o index_vert_array.o cpu_thread.o
 ENGINE_OBJS= $(addprefix $(OBJECT_DIR)/, $(ENGINE_SRC))
 
 $(APPS_OBJ):%.o:application/%.cpp $(HEADERS_PATH)/fog_program.h 
-	$(CXX) $(CXXFLAGS) -c -o $(OBJECT_DIR)/$@ $< 
+	$(CXX) $(CXXFLAGS) -std=c++11 -c -o $(OBJECT_DIR)/$@ $< 
 
 $(APPS_TARGET):%:%.o $(ENGINE_OBJS)
 	$(CXX) -o $(BINARY_DIR)/$@ $(OBJECT_DIR)/$< $(ENGINE_OBJS) $(SYSLIBS)
