@@ -37,7 +37,8 @@ enum fog_engine_state{
     GLOBAL_GATHER, TARGET_GATHER,
     CREATE_SUBTASK_DATASET,
     GLOBAL_UPDATE_VERTICES,
-    TARGET_UPDATE_VERTICES
+    TARGET_UPDATE_VERTICES,
+    VOTE_TO_HALT_UPDATE_VERTICES,
 };
 
 //denotes the different status of cpu threads after they finished the given tasks.

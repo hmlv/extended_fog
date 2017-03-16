@@ -1104,6 +1104,51 @@ void cpu_work<VA, U, T>::operator() ( u32_t processor_id, barrier *sync, index_v
             }
             break;
         }
+        case VOTE_TO_HALT_UPDATE_VERTICES:
+        {
+            update_vertices_param * p_update_vertices_param = (update_vertices_param *)state_param;
+            u32_t segment_id     = p_update_vertices_param->strip_id;
+            u32_t threshold      = p_update_vertices_param->threshold;
+            //VA * attr_array_head = (VA *)p_update_vertices_param->attr_array_head;
+            VA * attr_buf_head   = (VA *)p_update_vertices_param->attr_buf_head;
+            u32_t v_index;
+
+
+            struct sched_bitmap_manager * my_sched_bitmap_manager = seg_config->per_cpu_info_list[processor_id]->target_sched_manager;
+            struct context_data * my_context_data = p_update_vertices_param->PHASE > 0 ? my_sched_bitmap_manager->p_context_data1:
+                            my_sched_bitmap_manager->p_context_data0;
+            struct bitmap * current_bitmap = my_context_data->p_bitmap;
+
+            u32_t curr_segment_min_vert = processor_id + ( (0==segment_id) ? 0 : segment_id ) * seg_config->segment_cap;
+            u32_t curr_segment_max_vert = (seg_config->num_segments-1 == segment_id) ? gen_config.max_vert_id : (segment_id+1) * seg_config->segment_cap - 1;
+            u32_t min_vert = my_context_data->per_min_vert_id > curr_segment_min_vert ? my_context_data->per_min_vert_id : curr_segment_min_vert;
+            u32_t max_vert = my_context_data->per_max_vert_id < curr_segment_max_vert ? my_context_data->per_max_vert_id : curr_segment_max_vert;
+            //u32_t min_vert = curr_segment_min_vert;
+            //u32_t max_vert = curr_segment_max_vert;
+
+            /*
+            PRINT_DEBUG("processing the %u segment\n", segment_id);
+            PRINT_DEBUG("segment_cap = %u\n", seg_config->segment_cap);
+            PRINT_DEBUG("min_vert = %u\n", min_vert);
+            PRINT_DEBUG("max_vert = %u\n", max_vert);
+            */
+            //Traversal each vertex in this segment to update its value
+            for(u32_t vid = min_vert; vid <= max_vert; vid += gen_config.num_processors){
+                if (0==current_bitmap->get_value(vid)){
+                    continue;
+                }
+                if(1==threshold){
+                    v_index = vid % seg_config->segment_cap;
+                }
+                else{
+                    v_index = vid;
+                }
+                alg_ptr->update_vertex(vid, (VA *)&attr_buf_head[v_index], vert_index);
+                //current_bitmap->clear_value(vid);
+                //my_context_data->per_bits_true_size--;
+            }
+            break;
+        }
         default:
         printf( "Unknow fog engine state is encountered\n" );
     }

@@ -41,7 +41,8 @@ enum global_target
 {
     GLOBAL_ENGINE = 0,
     TARGET_ENGINE,
-    BACKWARD_ENGINE
+    BACKWARD_ENGINE,
+    VOTE_TO_HALT_ENGINE
 };
 //A stands for the algorithm (i.e., ???_program)
 //VA stands for the vertex attribute
@@ -62,6 +63,8 @@ class fog_engine{
         static u32_t gather_fog_engine_state;
         static u32_t init_fog_engine_state;
         static u32_t current_attr_segment;
+
+        static u32_t update_vertices_fog_engine_state;
 
         //io work queue
         static io_queue * fog_io_queue;
@@ -166,6 +169,10 @@ class fog_engine{
         u32_t cal_number_of_active_vertices(u32_t segment_id, u32_t CONTEXT_PHASE);
 
         static void add_schedule_no_optimize(u32_t task_vid, u32_t CONTEXT_PHASE);
+
+        void vote_to_halt_init_sched_buf(const char * buf_for_write);
+
+        static void vote_to_halt(u32_t task_vid, u32_t CONTEXT_PHASE);
 };
 template <typename VA, typename U, typename T>
 index_vert_array<T> * fog_engine<VA, U, T>::vert_index;
@@ -188,5 +195,7 @@ segment_config<VA> * fog_engine<VA, U, T>::seg_config;
 template <typename VA, typename U, typename T>
 io_queue * fog_engine<VA, U, T>::fog_io_queue;
 
+template <typename VA, typename U, typename T>
+u32_t fog_engine<VA, U, T>::update_vertices_fog_engine_state;
 #endif
 

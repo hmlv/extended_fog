@@ -231,10 +231,10 @@ void fog_engine<VA, U, T>::operator() ()
             }
             PRINT_DEBUG("Iteration finished!\n");
          }
-         else
+         else if(true == m_alg_ptr->need_all_neigh && global_or_target == TARGET_ENGINE)
          {
-             //true == m_alg_ptr->need_all_neigh && global_or_target == TARGET_ENGINE
              assert(global_or_target == TARGET_ENGINE);
+             update_vertices_fog_engine_state = TARGET_UPDATE_VERTICES;
              while(1)
              {
                  m_alg_ptr->loop_counter++;
@@ -250,6 +250,27 @@ void fog_engine<VA, U, T>::operator() ()
                  ret = m_alg_ptr->after_iteration();
                  if (ret == ITERATION_STOP)
                      break;
+                 assert(ret == ITERATION_CONTINUE);
+             }
+             PRINT_DEBUG("Iteration finished!\n");
+         }
+         else
+         {
+             //true == m_alg_ptr->need_all_neigh && global_or_target == VATE_TO_HALT_ENGINE
+             assert(global_or_target == VOTE_TO_HALT_ENGINE);
+             update_vertices_fog_engine_state = VOTE_TO_HALT_UPDATE_VERTICES;
+             while(1)
+             {
+                 m_alg_ptr->loop_counter++;
+                 m_alg_ptr->CONTEXT_PHASE = 0;
+                 m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
+                 m_alg_ptr->before_iteration();
+                 update_vertices(m_alg_ptr->CONTEXT_PHASE);
+                 m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
+                 ret = m_alg_ptr->after_iteration();
+                 if(ret == ITERATION_STOP){
+                     break;
+                 }
                  assert(ret == ITERATION_CONTINUE);
              }
              PRINT_DEBUG("Iteration finished!\n");
@@ -2947,14 +2968,21 @@ void fog_engine<VA, U, T>::run_task(Fog_task<VA,U,T> * task)
     buf_for_write = (char *)map_anon_memory(gen_config.memory_size, true, true );
     if(true == m_alg_ptr->need_all_neigh)
     {
-        u64_t per_bitmap_buf_size = (u64_t)(ROUND_UP(((ROUND_UP(gen_config.max_vert_id+1, 8))/8), gen_config.num_processors)/gen_config.num_processors);
-        //u64_t total_header_len = sizeof(sched_bitmap_manager)+ sizeof(context_data)*2;
-        u64_t per_cpu_info_size = sizeof(sched_bitmap_manager)+ sizeof(context_data)*2 + per_bitmap_buf_size * 2;
-        per_cpu_info_size = ROUND_UP(per_cpu_info_size, 8);
-
-        seg_config = new segment_config<VA>((const char *)buf_for_write, per_cpu_info_size);
-
-        target_init_sched_buf((const char*)buf_for_write);
+        if(global_or_target == TARGET_ENGINE){
+            u64_t per_bitmap_buf_size = (u64_t)(ROUND_UP(((ROUND_UP(gen_config.max_vert_id+1, 8))/8), gen_config.num_processors)/gen_config.num_processors);
+            //u64_t total_header_len = sizeof(sched_bitmap_manager)+ sizeof(context_data)*2;
+            u64_t per_cpu_info_size = sizeof(sched_bitmap_manager)+ sizeof(context_data)*2 + per_bitmap_buf_size * 2;
+            per_cpu_info_size = ROUND_UP(per_cpu_info_size, 8);
+            seg_config = new segment_config<VA>((const char *)buf_for_write, per_cpu_info_size);
+            target_init_sched_buf((const char*)buf_for_write);
+        }
+        else if(global_or_target == VOTE_TO_HALT_ENGINE){
+            u64_t per_bitmap_buf_size = (u64_t)(ROUND_UP(((ROUND_UP(gen_config.max_vert_id+1, 8))/8), gen_config.num_processors)/gen_config.num_processors);
+            u64_t per_cpu_info_size = sizeof(sched_bitmap_manager)+ sizeof(context_data) + per_bitmap_buf_size;
+            per_cpu_info_size = ROUND_UP(per_cpu_info_size, 8);
+            seg_config = new segment_config<VA>((const char *)buf_for_write, per_cpu_info_size);
+            vote_to_halt_init_sched_buf((const char*)buf_for_write);
+        }
     }
     else
     {
@@ -3190,6 +3218,107 @@ void fog_engine<VA, U, T>::target_init_sched_buf(const char * buf_for_write)
     PRINT_DEBUG("End of target_init_sched_buf()\n");
 }
 
+template <typename VA, typename U, typename T>
+void fog_engine<VA, U, T>::vote_to_halt_init_sched_buf(const char * buf_for_write)
+{
+    u32_t total_header_len;
+    u32_t total_num_vertices;
+    u32_t per_bitmap_buf_size;
+
+    total_num_vertices = gen_config.max_vert_id + 1;
+
+    per_bitmap_buf_size = (u32_t)(ROUND_UP(((ROUND_UP(total_num_vertices, 8))/8), gen_config.num_processors)/gen_config.num_processors);
+
+
+    total_header_len = sizeof(sched_bitmap_manager)
+        + sizeof(context_data)*1
+        ;
+
+
+    //populate the buffer managers
+    for(u32_t i=0; i<gen_config.num_processors; i++)
+    {
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager =
+            (sched_bitmap_manager*)seg_config->per_cpu_info_list[i]->buf_head;
+
+        seg_config->per_cpu_info_list[i]->global_sched_manager = NULL;
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0 =
+            (context_data *)((u64_t)seg_config->per_cpu_info_list[i]->buf_head
+                    +sizeof(sched_bitmap_manager));
+
+        //context data address
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data1 = NULL;
+
+        seg_config->per_cpu_info_list[i]->update_manager = NULL;
+
+        //bitmap address
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_bitmap_buf_head =
+            (char*)((u64_t)seg_config->per_cpu_info_list[i]->buf_head + total_header_len);
+
+        //build the strips
+        seg_config->per_cpu_info_list[i]->strip_buf_head = NULL;//the first strip
+        seg_config->per_cpu_info_list[i]->strip_buf_len = 0;
+        seg_config->per_cpu_info_list[i]->strip_cap = 0;
+
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_bitmap_buf_size = per_bitmap_buf_size;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_min_vert_id =
+            seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_max_vert_id = 0;
+
+        //u32_t tmp_min_offset = gen_config.min_vert_id%gen_config.num_processors;
+        //PRINT_DEBUG("tmp_min_offset = %d\n", tmp_min_offset);
+        u32_t tmp_max_offset = gen_config.max_vert_id%gen_config.num_processors;
+        //PRINT_DEBUG("tmp_max_offset = %d\n", tmp_max_offset);
+        //u32_t tmp_min_value;
+        u32_t tmp_max_value;
+
+        //if (i == tmp_min_offset)
+        //    tmp_min_value = gen_config.min_vert_id;
+        //else if (i < tmp_min_offset)
+        //    tmp_min_value = gen_config.min_vert_id + gen_config.num_processors - tmp_min_offset + i;
+        //else //(i > tmp_min_offset)
+        //    tmp_min_value = gen_config.min_vert_id - tmp_min_offset + i;
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_min_vert_id = i;
+
+        if (i == tmp_max_offset)
+            tmp_max_value = gen_config.max_vert_id;
+        else if(i < tmp_max_offset)
+            tmp_max_value = gen_config.max_vert_id - tmp_max_offset + i;
+        else //(i > tmp_max_offset)
+            tmp_max_value = gen_config.max_vert_id - gen_config.num_processors - tmp_max_offset + i;
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_max_vert_id = tmp_max_value;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_num_edges = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->signal_to_scatter = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->p_bitmap_steal = NULL;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_virt_cpu_id = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_num_virt_cpus = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_bits_true_size = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->steal_context_edge_id = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->partition_gather_signal = 0;
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->partition_gather_strip_id = -1;
+
+
+        memset(seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_bitmap_buf_head, 0xFF, per_bitmap_buf_size);
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_bits_true_size = (tmp_max_value - i)/gen_config.num_processors + 1;
+
+        seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->p_bitmap = new bitmap(
+                seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->per_bitmap_buf_head,
+                per_bitmap_buf_size,
+                per_bitmap_buf_size*8,
+                i,
+                tmp_max_value,
+                i,
+                gen_config.num_processors);
+    }
+
+    //show_target_sched_update_buf();
+    PRINT_DEBUG("End of vote_to_halt_init_sched_buf()\n");
+}
+
 //update vertices with the pull mode, read data directly from neighbors.
 template <typename VA, typename U, typename T>
 void fog_engine<VA, U, T>::update_vertices(u32_t CONTEXT_PHASE)
@@ -3211,7 +3340,7 @@ void fog_engine<VA, U, T>::update_vertices(u32_t CONTEXT_PHASE)
         p_update_vertices_param->PHASE           = CONTEXT_PHASE;
         vert_index->set_vert_attr_ptr((const char*)p_update_vertices_param->attr_array_head, (const char*)p_update_vertices_param->attr_buf_head);
 
-        update_vertices_cpu_work = new cpu_work<VA, U,T>(TARGET_UPDATE_VERTICES, (void *)p_update_vertices_param);
+        update_vertices_cpu_work = new cpu_work<VA, U,T>(update_vertices_fog_engine_state, (void *)p_update_vertices_param);
         pcpu_threads[0]->work_to_do = update_vertices_cpu_work;
         (*pcpu_threads[0])();
 
@@ -3267,7 +3396,7 @@ void fog_engine<VA, U, T>::update_vertices(u32_t CONTEXT_PHASE)
 
             //PRINT_DEBUG("update vertices in the attr buf\n");
             vert_index->set_vert_attr_ptr((const char*)p_update_vertices_param->attr_array_head, (const char*)p_update_vertices_param->attr_buf_head);
-            update_vertices_cpu_work = new cpu_work<VA, U, T>(TARGET_UPDATE_VERTICES, (void *)p_update_vertices_param);
+            update_vertices_cpu_work = new cpu_work<VA, U, T>(update_vertices_fog_engine_state, (void *)p_update_vertices_param);
             pcpu_threads[0]->work_to_do = update_vertices_cpu_work;
             (*pcpu_threads[0])();
 
@@ -3376,7 +3505,7 @@ void fog_engine<VA, U, T>::update_vertices(u32_t CONTEXT_PHASE)
             buf_index++;
 
             vert_index->set_vert_attr_ptr((const char*)p_update_vertices_param->attr_array_head, (const char*)p_update_vertices_param->attr_buf_head);
-            update_vertices_cpu_work = new cpu_work<VA, U, T>(TARGET_UPDATE_VERTICES, (void *)p_update_vertices_param);
+            update_vertices_cpu_work = new cpu_work<VA, U, T>(update_vertices_fog_engine_state, (void *)p_update_vertices_param);
             pcpu_threads[0]->work_to_do = update_vertices_cpu_work;
             (*pcpu_threads[0])();
 
@@ -3468,6 +3597,43 @@ void fog_engine<VA, U, T>::add_schedule_no_optimize(u32_t task_vid, u32_t CONTEX
         max_vert = task_vid;
         my_context_data->per_max_vert_id = max_vert;
     }
+}
+
+template <typename VA, typename U, typename T>
+void fog_engine<VA, U, T>::vote_to_halt(u32_t task_vid, u32_t CONTEXT_PHASE)
+{
+    u32_t partition_id = 0;
+    //u32_t max_vert = 0;
+    //u32_t min_vert = 0;
+
+    partition_id = VID_TO_PARTITION(task_vid);
+    assert(task_vid <= gen_config.max_vert_id);
+    assert(partition_id < gen_config.num_processors);
+
+    sched_bitmap_manager * my_sched_bitmap_manager;
+    struct context_data * my_context_data;
+    bitmap * my_bitmap = NULL;
+    my_sched_bitmap_manager = seg_config->per_cpu_info_list[partition_id]->target_sched_manager;
+    my_context_data = CONTEXT_PHASE > 0 ? my_sched_bitmap_manager->p_context_data1 : my_sched_bitmap_manager->p_context_data0;
+    my_bitmap = my_context_data->p_bitmap;
+
+    //max_vert = my_context_data->per_max_vert_id;
+    //min_vert = my_context_data->per_min_vert_id;
+
+    my_context_data->per_bits_true_size--;
+    my_bitmap->clear_value(task_vid);
+    /*
+    if (task_vid <= min_vert)
+    {
+        min_vert = task_vid;
+        my_context_data->per_min_vert_id = min_vert;
+    }
+    if (task_vid >= max_vert)
+    {
+        max_vert = task_vid;
+        my_context_data->per_max_vert_id = max_vert;
+    }
+    */
 }
 
 //the explicit instantiation part
