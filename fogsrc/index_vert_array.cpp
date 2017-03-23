@@ -241,11 +241,13 @@ unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
 template <typename T>
 void index_vert_array<T>::get_out_edge( unsigned int vid, unsigned int which, T &ret)
 {
+    /*
 	if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
     {
         //return NULL;
         PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
     }
+    */
 
 	ret = (T)edge_array_header[ vert_array_header[vid].offset + which ];
 }
@@ -253,11 +255,13 @@ void index_vert_array<T>::get_out_edge( unsigned int vid, unsigned int which, T 
 template <typename T>
 void index_vert_array<T>::get_in_edge( unsigned int vid, unsigned int which, in_edge &ret)
 {
+    /*
 	if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
     {
         //return NULL;
         PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
     }
+    */
 
 	ret = (in_edge)in_edge_array_header[ in_vert_array_header[vid].offset + which ];
 
@@ -266,11 +270,13 @@ void index_vert_array<T>::get_in_edge( unsigned int vid, unsigned int which, in_
 template <typename T>
 u32_t index_vert_array<T>::get_out_neighbour( unsigned int vid, unsigned int which)
 {
+    /*
 	if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
     {
         //return NULL;
         PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
     }
+    */
 
 	return edge_array_header[ vert_array_header[vid].offset + which ].get_dest_value();
 }
@@ -278,11 +284,13 @@ u32_t index_vert_array<T>::get_out_neighbour( unsigned int vid, unsigned int whi
 template <typename T>
 u32_t index_vert_array<T>::get_in_neighbour( unsigned int vid, unsigned int which)
 {
+    /*
 	if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
     {
         //return NULL;
         PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
     }
+    */
 
 	return in_edge_array_header[ in_vert_array_header[vid].offset + which ].get_src_value();
 }

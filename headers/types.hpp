@@ -1,5 +1,5 @@
 /**************************************************************************************************
- * Authors: 
+ * Authors:
  *   Zhiyuan Shao, Jian He
  *
  * Declaration:
@@ -22,9 +22,9 @@ const float EPSILON = 1.00e-03;
 namespace fog
 {
     struct edge{
-        u32_t dest_vert;                                         
+        u32_t dest_vert;
         float edge_weight;
-    }__attribute__ ((aligned(8)));                                     
+    }__attribute__ ((aligned(8)));
 
     struct in_edge
     {
@@ -65,8 +65,8 @@ namespace fog
 
     //vertex indexing (element in vertex array)
     struct vert_index{
-        u64_t  offset;                                    
-    }__attribute__ ((aligned(8)));   
+        u64_t  offset;
+    }__attribute__ ((aligned(8)));
 
     //update
     template<typename VA>
@@ -137,7 +137,7 @@ namespace fog
         u32_t per_min_vert_id;
         u32_t per_max_vert_id;
         u32_t per_num_edges;
-        u32_t signal_to_scatter;// 0 stands for normal , 1 stands for the situation when update-buf is full, 2 stands for stealing from other processors 
+        u32_t signal_to_scatter;// 0 stands for normal , 1 stands for the situation when update-buf is full, 2 stands for stealing from other processors
 
         //data for stealed-cpus
         u32_t steal_max_vert_id;
@@ -163,12 +163,12 @@ namespace fog
 
         u32_t signal_to_gather;
 
-        /*
+
         //for backward-algorithm
         u32_t alg_per_bits_true_size;
         u32_t alg_per_min_vert_id;
         u32_t alg_per_max_vert_id;
-        */
+
     }__attribute__ ((aligned(8)));
 
     //manage the update buffer.

@@ -15,6 +15,11 @@
 #include "index_vert_array.hpp"
 typedef unsigned int u32_t;
 
+enum algorithm_operation{
+    SCATTER_GATHER = 0,
+    UPDATE_VERTEX
+};
+
 //the typename T_EDGE is the edge file-type(type1 or type2)
 template <typename VERT_ATTR, typename ALG_UPDATE, typename T_EDGE>
 class Fog_program{
@@ -30,6 +35,7 @@ class Fog_program{
         bool init_sched;
         bool set_forward_backward;
         bool need_all_neigh;
+        int operation;
 
         Fog_program(int p_forward_backward_phase, bool p_init_sched, bool p_set_forward_backward)
         {

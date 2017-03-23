@@ -146,15 +146,14 @@ void cpu_work<VA, U, T>::operator() ( u32_t processor_id, barrier *sync, index_v
                 current_bitmap = my_context_data->p_bitmap;
                 max_vert = my_context_data->per_max_vert_id;
                 min_vert = my_context_data->per_min_vert_id;
-                /*
                 if (signal_to_scatter == NORMAL_SCATTER && alg_ptr->set_forward_backward == true
                         && alg_ptr->forward_backward_phase == FORWARD_TRAVERSAL)
                 {
+                    //PRINT_DEBUG("set for backward traversal\n");
                     my_context_data->alg_per_max_vert_id = my_context_data->per_max_vert_id;
                     my_context_data->alg_per_min_vert_id = my_context_data->per_min_vert_id;
                     my_context_data->alg_per_bits_true_size = my_context_data->per_bits_true_size;
                 }
-                */
             }
             if (signal_to_scatter == STEAL_SCATTER || signal_to_scatter == SPECIAL_STEAL_SCATTER)
             {

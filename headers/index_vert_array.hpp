@@ -68,11 +68,13 @@ class index_vert_array{
 
         template <typename VERT_ATTR> const VERT_ATTR * get_in_neigh_attr(u32_t vid, u32_t which)
         {
+            /*
             if( which > index_vert_array<T>::num_edges( vid, IN_EDGE) )
             {
                 //return NULL;
                 PRINT_ERROR("vertex %d get_in_edge out of range.\n", vid);
             }
+            */
             u32_t neigh_id = in_edge_array_header[ in_vert_array_header[vid].offset + which ].get_src_value();
             if(vid / segment_cap == neigh_id / segment_cap){
                 return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);
@@ -83,11 +85,13 @@ class index_vert_array{
         }
         template <typename VERT_ATTR> const VERT_ATTR * get_out_neigh_attr(u32_t vid, u32_t which)
         {
+            /*
             if( which > index_vert_array<T>::num_edges( vid, OUT_EDGE) )
             {
                 //return NULL;
                 PRINT_ERROR("vertex %d get_out_edge out of range.\n", vid);
             }
+            */
             u32_t neigh_id = edge_array_header[ vert_array_header[vid].offset + which ].get_dest_value();
             if(vid / segment_cap == neigh_id / segment_cap){
                 return &(((VERT_ATTR*)vert_attr_buf)[neigh_id % segment_cap]);

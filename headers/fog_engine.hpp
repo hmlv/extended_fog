@@ -42,7 +42,8 @@ enum global_target
     GLOBAL_ENGINE = 0,
     TARGET_ENGINE,
     BACKWARD_ENGINE,
-    VOTE_TO_HALT_ENGINE
+    VOTE_TO_HALT_ENGINE,
+    HYBRID_ENGINE
 };
 //A stands for the algorithm (i.e., ???_program)
 //VA stands for the vertex attribute
@@ -106,12 +107,15 @@ class fog_engine{
 
         u32_t hit_counts;
 
+        u32_t bitmap0_value;
+        u32_t bitmap1_value;
         bool is_first_run;
 
     public:
 
         fog_engine(u32_t global_target, Fog_program<VA, U, T> *alg_ptr);
         fog_engine(u32_t global_target);
+        fog_engine(u32_t global_target, u32_t bitmap0_value, u32_t bitmap1_value);
 		~fog_engine();
         void operator() ();
         void print_attr_result();
@@ -173,6 +177,8 @@ class fog_engine{
         void vote_to_halt_init_sched_buf(const char * buf_for_write);
 
         static void vote_to_halt(u32_t task_vid, u32_t CONTEXT_PHASE);
+
+        void hybrid_to_init_sched_update_buf();
 };
 template <typename VA, typename U, typename T>
 index_vert_array<T> * fog_engine<VA, U, T>::vert_index;
