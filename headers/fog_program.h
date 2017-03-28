@@ -83,6 +83,9 @@ class Fog_program{
 
         virtual void update_vertex(u32_t vid, VERT_ATTR * this_vert, index_vert_array<T_EDGE>* vert_index){};
 
+        virtual int num_of_remain_partitions(){return 0;};
+        virtual int judge_for_filter(VERT_ATTR * this_vert){return 0;};
+
 };
 
 

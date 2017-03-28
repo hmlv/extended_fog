@@ -136,9 +136,10 @@ void fog_engine<VA, U, T>::operator() ()
          init_phase(glo_loop);
          if (global_or_target == TARGET_ENGINE)
          {
-            m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
-            if( m_alg_ptr->num_tasks_to_sched == 0)
+             m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
+             if( m_alg_ptr->num_tasks_to_sched == 0){
                  break;
+             }
          }
          if (false==m_alg_ptr->need_all_neigh && global_or_target == GLOBAL_ENGINE)
          {
@@ -189,6 +190,7 @@ void fog_engine<VA, U, T>::operator() ()
          }
          else if(false == m_alg_ptr->need_all_neigh && global_or_target == TARGET_ENGINE)
          {
+            PRINT_DEBUG("TARGET ENGINE\n");
             assert(global_or_target == TARGET_ENGINE);
             scatter_fog_engine_state = TARGET_SCATTER;
             gather_fog_engine_state = TARGET_GATHER;
@@ -2959,21 +2961,19 @@ void fog_engine<VA, U, T>::run_task(Fog_task<VA,U,T> * task)
     gen_config.vert_file_name = task->m_task_config->vert_file_name;
     gen_config.edge_file_name = task->m_task_config->edge_file_name;
     gen_config.attr_file_name = task->m_task_config->attr_file_name;
-    gen_config.in_vert_file_name = task->m_task_config->in_vert_file_name;
-    gen_config.in_edge_file_name = task->m_task_config->in_edge_file_name;
     PRINT_DEBUG( "gen_config.min_vert_id = %d\n", gen_config.min_vert_id );
     PRINT_DEBUG( "gen_config.max_vert_id = %d\n", gen_config.max_vert_id );
     PRINT_DEBUG( "gen_config.num_edges = %lld\n", gen_config.num_edges );
     PRINT_DEBUG( "gen_config.vert_file_name = %s\n", gen_config.vert_file_name.c_str() );
     PRINT_DEBUG( "gen_config.edge_file_name = %s\n", gen_config.edge_file_name.c_str() );
+    if(gen_config.with_in_edge){
+        gen_config.in_vert_file_name = task->m_task_config->in_vert_file_name;
+        gen_config.in_edge_file_name = task->m_task_config->in_edge_file_name;
+        PRINT_DEBUG( "gen_config.in_vert_file_name = %s\n", gen_config.in_vert_file_name.c_str() );
+        PRINT_DEBUG( "gen_config.in_edge_file_name = %s\n", gen_config.in_edge_file_name.c_str() );
+    }
     PRINT_DEBUG( "gen_config.attr_file_name(WRITE ONLY) = %s\n", gen_config.attr_file_name.c_str() );
 
-    //2.create the index array for indexing the edges
-    if(vert_index!=NULL)
-    {
-        delete vert_index;
-    }
-    vert_index = new index_vert_array<T>;
 
     signal_of_partition_gather = 0;
     //allocate buffer for writting
@@ -2986,8 +2986,12 @@ void fog_engine<VA, U, T>::run_task(Fog_task<VA,U,T> * task)
         {
             for(u32_t i=0; i<gen_config.num_processors; i++)
             {
-                delete seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->p_bitmap;
-                delete seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data1->p_bitmap;
+                if(NULL!=seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->p_bitmap){
+                    delete seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data0->p_bitmap;
+                }
+                if(NULL!=seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data1->p_bitmap){
+                    delete seg_config->per_cpu_info_list[i]->target_sched_manager->p_context_data1->p_bitmap;
+                }
                 PRINT_DEBUG("Delete bitmap!\n");
             }
         }
@@ -2998,16 +3002,13 @@ void fog_engine<VA, U, T>::run_task(Fog_task<VA,U,T> * task)
     //allocate buffer for writting
     //modify the memory_size
     u64_t need_mem = sizeof(VA) * (gen_config.max_vert_id + 1) * 3;
-    PRINT_DEBUG("new memory size %lld\n", need_mem/1024/1024);
+    PRINT_DEBUG("need memory size %lld\n", need_mem/1024/1024);
     gen_config.memory_size = (need_mem < gen_config.origin_mem_size)?need_mem:gen_config.origin_mem_size;
-    /*
     if(gen_config.memory_size < 1024*1024*1024)
     {
         gen_config.memory_size = 1024*1024*1024;
     }
-    */
     PRINT_DEBUG("memory size %lld\n", gen_config.memory_size/1024/1024);
-    PRINT_DEBUG("origin memory size %lld\n", gen_config.origin_mem_size/1024/1024);
     //
     buf_for_write = (char *)map_anon_memory(gen_config.memory_size, true, true );
     if(true == m_alg_ptr->need_all_neigh)
@@ -3035,6 +3036,17 @@ void fog_engine<VA, U, T>::run_task(Fog_task<VA,U,T> * task)
     else
     {
         seg_config = new segment_config<VA>((const char *)buf_for_write);
+    }
+
+    //2.create the index array for indexing the edges
+    //mmap vertex and edge file after allocate static memory (Huiming Lv), if not, may be meet some bug
+    if(vert_index!=NULL)
+    {
+        delete vert_index;
+        vert_index = NULL;
+    }
+    if(vert_index==NULL){
+        vert_index = new index_vert_array<T>;
     }
 
     vert_index->set_segment_cap(seg_config->segment_cap);

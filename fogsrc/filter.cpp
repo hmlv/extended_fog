@@ -1,10 +1,10 @@
 /**************************************************************************************************
- * Authors: 
- *   Huiming Lv 
+ * Authors:
+ *   Huiming Lv
  *
  * Routines:
- *   The filter 
- *   
+ *   The filter
+ *
  * Notes:
  *
  *************************************************************************************************/
@@ -18,10 +18,9 @@
 #define REMAP_BUFFER_LEN 2048*2048
 //impletation of filter
 
-//template<typename VA, typename T>
-//void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index, int task_id)
-template<typename VA>
-void Filter<VA>::do_scc_filter(VA * va, int task_id)
+//template<typename VA>
+template<typename VA, typename U, typename T>
+void Filter<VA, U, T>::do_scc_filter(VA * va, int task_id)
 {
     struct bag_config FW_bag;
     struct bag_config BW_bag;
@@ -36,7 +35,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
     RM_id_stream<<(TASK_ID+3);
     //std::string result_file_name = gen_config.graph_path + result_id_stream.str(); + ".result";
     std::string FW_remap_file_name = gen_config.graph_path + "/temp" + FW_id_stream.str() + ".remap";
-    std::string BW_remap_file_name = gen_config.graph_path + "/temp" + BW_id_stream.str() + ".remap"; 
+    std::string BW_remap_file_name = gen_config.graph_path + "/temp" + BW_id_stream.str() + ".remap";
     std::string RM_remap_file_name = gen_config.graph_path + "/temp" + RM_id_stream.str() + ".remap";
 
     int FW_remap_fd = open( FW_remap_file_name.c_str(), O_CREAT|O_WRONLY, S_IRUSR);
@@ -57,7 +56,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
         printf("Cannot create remap file:%s\n Aborted.\n", RM_remap_file_name.c_str());
         exit(-1);
     }
-   
+
     u32_t * FW_remap_buffer = new u32_t[REMAP_BUFFER_LEN];
     u32_t * BW_remap_buffer = new u32_t[REMAP_BUFFER_LEN];
     u32_t * RM_remap_buffer = new u32_t[REMAP_BUFFER_LEN];
@@ -77,7 +76,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
     int RM_vert_num = 0;
     int vert_to_scc = 0;
     int vert_to_TRIM = 0;
-    
+
     for (unsigned int id = gen_config.min_vert_id; id <= gen_config.max_vert_id; id++ )
     {
         //PRINT_DEBUG_LOG("vertex %d, fw_bw_label=%d, is_found=%d\n", id, (va+id)->fw_bw_label,(va+id)->is_found);
@@ -97,7 +96,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
                     FW_vert_num++;
                     break;
                 }
-            
+
             case 2:
                 {
                     if((va+id)->is_found)
@@ -120,7 +119,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
                     }
                     break;
                 }
-            
+
             case 3:
                 {
                     vert_to_TRIM++;
@@ -129,7 +128,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
                     //PRINT_DEBUG_CV_LOG("TRIM.   %d is a SCC!\n", id);
                     break;
                 }
-            
+
             //case UINT_MAX:
             case 8:
                 {
@@ -172,7 +171,7 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
     delete [] BW_remap_buffer;
     delete [] RM_remap_buffer;
 
-    FW_bag.creater_id = task_id; 
+    FW_bag.creater_id = task_id;
     FW_bag.data_name = FW_remap_file_name;
     TASK_ID++;
     queue_task_id.push(TASK_ID);
@@ -204,10 +203,9 @@ void Filter<VA>::do_scc_filter(VA * va, int task_id)
     std::cout<<"scc filter over!"<<std::endl;
 }
 
-//template<typename VA, typename T>
-//void Filter<VA, T>::do_trim_filter(VA * va, index_vert_array<T> * vertex_index, int task_id)
-template<typename VA>
-void Filter<VA>::do_trim_filter(VA * va, int task_id)
+//template<typename VA>
+template<typename VA, typename U, typename T>
+void Filter<VA, U, T>::do_trim_filter(VA * va, int task_id)
 {
     struct bag_config output_bag;
     std::stringstream result_id_stream;
@@ -232,7 +230,7 @@ void Filter<VA>::do_trim_filter(VA * va, int task_id)
 
     int vert_num = 0;
     int vert_to_TRIM = 0;
-    
+
     for (unsigned int id = gen_config.min_vert_id; id <= gen_config.max_vert_id; id++ )
     {
         //PRINT_DEBUG_LOG("vertex %d, fw_bw_label=%d, is_found=%d\n", id, (va+id)->fw_bw_label,(va+id)->is_found);
@@ -259,14 +257,14 @@ void Filter<VA>::do_trim_filter(VA * va, int task_id)
     }
 
     flush_buffer_to_file(remap_fd, (char*)remap_buffer, (vert_num - remap_buf_offset*REMAP_BUFFER_LEN)*sizeof(u32_t));
-    
+
     PRINT_DEBUG("vert_to_TRIM: %d\n", vert_to_TRIM);
     PRINT_DEBUG("after trim, remian %d vertex\n", vert_num);
     PRINT_DEBUG("all = %d\n", vert_to_TRIM + vert_num);
 
     delete [] remap_buffer;
 
-    output_bag.creater_id = task_id; 
+    output_bag.creater_id = task_id;
     output_bag.data_name = remap_file_name;
     TASK_ID++;
     queue_task_id.push(TASK_ID);
@@ -280,11 +278,81 @@ void Filter<VA>::do_trim_filter(VA * va, int task_id)
     std::cout<<"trim filter over!"<<std::endl;
 }
 
+template<typename VA, typename U, typename T>
+void Filter<VA, U, T>::set_alg(Fog_program<VA,U,T> * m_alg_ptr){
+    this->_alg_ptr = m_alg_ptr;
+}
+
+template<typename VA, typename U, typename T>
+void Filter<VA, U, T>::do_filter(VA *va, int task_id){
+    int partition_num = this->_alg_ptr->num_of_remain_partitions();
+    struct bag_config * bag_array = new struct bag_config[partition_num];
+    int * fd_array = new int[partition_num];
+    u32_t ** remap_buffer = new u32_t * [partition_num];
+    int * remap_buf_suffix = new int[partition_num];
+    int * remap_buf_offset = new int[partition_num];
+    int * part_vert_num    = new int[partition_num];
+    for(int i = 0; i < partition_num; ++i){
+        std::stringstream part_id_stream;
+        part_id_stream<<(TASK_ID + i+1);
+        std::string part_remap_file_name = gen_config.graph_path + "/temp" + part_id_stream.str() +  ".remap";
+        fd_array[i] = open(part_remap_file_name.c_str(), O_CREAT|O_WRONLY, S_IRUSR);
+        if(-1 == fd_array[i])
+        {
+            printf("Cannot create remap file:%s\n Aborted.\n", part_remap_file_name.c_str());
+            exit(-1);
+        }
+        remap_buffer[i] = new u32_t[REMAP_BUFFER_LEN];
+        memset((char*)remap_buffer[i], 0, REMAP_BUFFER_LEN*sizeof(u32_t));
+        remap_buf_suffix[i] = 0;
+        remap_buf_offset[i] = 0;
+        part_vert_num[i]    = 0;
+        bag_array[i].creater_id = task_id;
+        bag_array[i].data_name  = part_remap_file_name;
+    }
+
+    int judge = 0;
+    for (unsigned int id = gen_config.min_vert_id; id <= gen_config.max_vert_id; id++ )
+    {
+        judge = this->_alg_ptr->judge_for_filter(va+id);
+        if(-1==judge){
+            continue;
+        }
+        remap_buf_suffix[judge] = part_vert_num[judge] - remap_buf_offset[judge]*REMAP_BUFFER_LEN;
+        remap_buffer[judge][remap_buf_suffix[judge]] = id;
+        if(remap_buf_suffix[judge] == REMAP_BUFFER_LEN-1){
+            flush_buffer_to_file(fd_array[judge], (char*)(remap_buffer[judge]), REMAP_BUFFER_LEN*sizeof(u32_t));
+            memset((char*)remap_buffer[judge], 0, REMAP_BUFFER_LEN*sizeof(u32_t));
+            remap_buf_offset[judge]++;
+        }
+        part_vert_num[judge]++;
+    }
+
+    for(int i = 0; i < partition_num; ++i){
+        flush_buffer_to_file(fd_array[i], (char*)(remap_buffer[i]), (part_vert_num[i] - remap_buf_offset[i]*REMAP_BUFFER_LEN)*sizeof(u32_t));
+        PRINT_DEBUG_LOG("the %dth partition: vert_num = %d\n", i, part_vert_num[i]);
+        delete [] remap_buffer[i];
+        TASK_ID++;
+        queue_task_id.push(TASK_ID);
+        bag_array[i].bag_id = TASK_ID;
+        bag_array[i].data_size = part_vert_num[i];
+        task_bag_config_vec.push_back(bag_array[i]);
+    }
+    delete []bag_array;
+    delete []fd_array;
+    delete []remap_buffer;
+    delete []remap_buf_suffix;
+    delete []remap_buf_offset;
+    delete []part_vert_num;
+    std::cout<<"queue size: "<<task_bag_config_vec.size()<<std::endl;
+    std::cout<<"filter over!"<<std::endl;
+}
+
 /*
 template<typename VA, typename T>
 void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index)
 {
-    struct convert::edge * FW_edge_buffer = NULL; 
+    struct convert::edge * FW_edge_buffer = NULL;
     struct convert::edge * BW_edge_buffer = NULL;
     struct convert::edge * RM_edge_buffer = NULL;
     struct convert::type2_edge * type2_FW_edge_buffer = NULL;
@@ -302,7 +370,7 @@ void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index)
     struct convert::vert_index * RM_vert_buffer = new struct convert::vert_index[VERT_BUFFER_LEN];
     struct convert::in_edge * RM_in_edge_buffer = new struct convert::in_edge[EDGE_BUFFER_LEN];
     struct convert::vert_index * RM_in_vert_buffer = new struct convert::vert_index[VERT_BUFFER_LEN];
-    
+
     bool with_type1 = false;
     if(sizeof(T)==sizeof(type1_edge))
     {
@@ -342,7 +410,7 @@ void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index)
     //std::cout<<"memset ok\n";
     // debug
     u64_t vert_to_scc = 0;
-    u64_t vert_to_TRIM = 0; 
+    u64_t vert_to_TRIM = 0;
     // debug end
 
     int FW_edge_fd = 0;
@@ -476,13 +544,13 @@ void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index)
     u64_t BW_edge_num = 0;
     u32_t BW_edge_suffix = 0;
     u32_t BW_edge_buffer_offset = 0;
-    u64_t recent_BW_edge_num = 0; 
+    u64_t recent_BW_edge_num = 0;
     u64_t BW_in_edge_num = 0;
     u32_t BW_in_edge_suffix = 0;
     u32_t BW_in_edge_buffer_offset = 0;
-    u64_t recent_BW_in_edge_num = 0; 
+    u64_t recent_BW_in_edge_num = 0;
 
-    u64_t RM_vert_num = 0; 
+    u64_t RM_vert_num = 0;
     u32_t RM_vert_suffix = 0;
     u32_t RM_vert_buffer_offset = 0;
     u64_t RM_edge_num = 0;
@@ -512,7 +580,7 @@ void Filter<VA, T>::do_scc_filter(VA * va, index_vert_array<T> * vertex_index)
                     FW_vert_num++;
                     FW_vec.push_back(*(va+id));
                     temp_for_degree = vertex_index->num_edges(id, OUT_EDGE);
-                    for(u32_t i = 0; i < temp_for_degree; i++) 
+                    for(u32_t i = 0; i < temp_for_degree; i++)
                     {
                         temp_out_edge = vertex_index->get_out_edge(id, i);
                         temp_for_dst_or_src = temp_out_edge->get_dest_value();

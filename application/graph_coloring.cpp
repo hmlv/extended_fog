@@ -181,18 +181,8 @@ void start_engine()
     eng = new fog_engine<VERT_ATTR, char, T>(VOTE_TO_HALT_ENGINE);
     //eng = new fog_engine<VERT_ATTR, char, T>(GLOBAL_ENGINE);
 
-    struct task_config * ptr_task_config = new struct task_config;
-    ptr_task_config->min_vert_id = gen_config.min_vert_id;
-    ptr_task_config->max_vert_id = gen_config.max_vert_id;
-    ptr_task_config->num_edges = gen_config.num_edges;
-    ptr_task_config->is_remap = false;
-    ptr_task_config->graph_path = gen_config.graph_path;
-    ptr_task_config->vert_file_name = gen_config.vert_file_name;
-    ptr_task_config->edge_file_name = gen_config.edge_file_name;
-    ptr_task_config->attr_file_name = gen_config.attr_file_name;
-    ptr_task_config->in_vert_file_name = gen_config.in_vert_file_name;
-    ptr_task_config->in_edge_file_name = gen_config.in_edge_file_name;
-    ptr_task_config->with_in_edge = gen_config.with_in_edge;
+    std::string desc_name = vm["graph"].as<std::string>();
+    struct task_config * ptr_task_config = new struct task_config(false, 0, desc_name);
 
     Fog_task<VERT_ATTR, char, T> *task
         = new Fog_task<VERT_ATTR, char, T>();

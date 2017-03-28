@@ -50,7 +50,7 @@ index_vert_array<T>::index_vert_array()
         PRINT_ERROR( "index file mapping failed!\n" );
 		exit( -1 );
 	}
-    //PRINT_DEBUG( "index array mmapped at virtual address:0x%llx\n", (u64_t)memblock );
+    PRINT_DEBUG( "index array mmapped at virtual address:0x%llx\n", (u64_t)memblock );
     vert_array_header = (struct vert_index *) memblock;
 
 	//map edge files to edge_array_header
@@ -68,7 +68,7 @@ index_vert_array<T>::index_vert_array()
         PRINT_ERROR( "edge file mapping failed!\n" );
 		exit( -1 );
 	}
-    //PRINT_DEBUG( "edge array mmapped at virtual address:0x%llx\n", (u64_t)memblock );
+    PRINT_DEBUG( "edge array mmapped at virtual address:0x%llx\n", (u64_t)memblock );
     //edge_array_header = (struct T *) memblock;
     edge_array_header = (T *) memblock;
 
@@ -122,14 +122,21 @@ index_vert_array<T>::~index_vert_array()
 {
 	PRINT_DEBUG( "vertex index array unmapped!\n" );
 	munmap( (void*)vert_array_header, vert_index_file_length );
+    vert_array_header = NULL;
+	PRINT_DEBUG( "edge array unmapped!\n" );
 	munmap( (void*)edge_array_header, edge_file_length );
+    edge_array_header = NULL;
 	close( vert_index_file_fd );
 	close( edge_file_fd );
 
     if (gen_config.with_in_edge)
     {
         munmap( (void*)in_vert_array_header, in_vert_index_file_length );
+        PRINT_DEBUG( "in_vertex index array unmapped!\n" );
+        in_vert_array_header = NULL;
         munmap( (void*)in_edge_array_header, in_edge_file_length );
+        PRINT_DEBUG( "in_edge array unmapped!\n" );
+        in_edge_array_header = NULL;
         close( in_vert_index_file_fd );
         close( in_edge_file_fd );
     }
@@ -148,7 +155,9 @@ unsigned int index_vert_array<T>::num_out_edges( unsigned int vid )
 	//if ( start_edge == 0L && vid != 0 ) return 0;
 	if ( start_edge == 0L) return 0;
 
-	if ( vid > gen_config.max_vert_id ) return 0;
+    if ( vid > gen_config.max_vert_id ){
+        PRINT_ERROR("vid = %d, out of range, bigger than max_vert_id", vid);
+    }
 
     if ( vid == gen_config.max_vert_id )
         end_edge = gen_config.num_edges;
@@ -181,7 +190,9 @@ unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
         //if ( start_edge == 0L && vid != 0 ) return 0;
         if ( start_edge == 0L) return 0;
 
-        if ( vid > gen_config.max_vert_id ) return 0;
+        if ( vid > gen_config.max_vert_id ){
+            PRINT_ERROR("vid = %d, out of range, bigger than max_vert_id", vid);
+        }
 
         if ( vid == gen_config.max_vert_id )
             end_edge = gen_config.num_edges;
@@ -212,7 +223,9 @@ unsigned int index_vert_array<T>::num_edges( unsigned int vid, int mode )
         //if ( start_edge == 0L && vid != 0 ) return 0;
         if ( start_edge == 0L) return 0;
 
-        if ( vid > gen_config.max_vert_id ) return 0;
+        if ( vid > gen_config.max_vert_id ){
+            PRINT_ERROR("vid = %d, out of range, bigger than max_vert_id", vid);
+        }
 
         if ( vid == gen_config.max_vert_id )
             end_edge = gen_config.num_edges;
