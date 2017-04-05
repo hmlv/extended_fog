@@ -3840,8 +3840,15 @@ void fog_engine<VA, U, T>::vote_to_halt(u32_t task_vid, u32_t CONTEXT_PHASE)
     //max_vert = my_context_data->per_max_vert_id;
     //min_vert = my_context_data->per_min_vert_id;
 
+    if (0==my_bitmap->get_value(task_vid)){
+        return;
+    }
     my_context_data->per_bits_true_size--;
     my_bitmap->clear_value(task_vid);
+    //if (m_alg_ptr->set_forward_backward == true && m_alg_ptr->forward_backward_phase == FORWARD_TRAVERSAL)
+    //{
+        my_context_data->alg_per_bits_true_size--;
+    //}
     /*
     if (task_vid <= min_vert)
     {
