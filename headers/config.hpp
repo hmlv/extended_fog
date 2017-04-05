@@ -388,7 +388,7 @@ struct task_config{
         inline void init(const std::string & desc_data_name){
             this->min_vert_id       = pt.get<u32_t>("description.min_vertex_id");
             this->max_vert_id       = pt.get<u32_t>("description.max_vertex_id");
-            this->num_edges         = pt.get<u32_t>("description.num_of_edges");
+            this->num_edges         = pt.get<u64_t>("description.num_of_edges");
             if(true==this->is_remap){
                 this->remap_file_name = desc_data_name.substr(0, desc_data_name.find_last_of(".")) + ".remap";
             }

@@ -86,21 +86,24 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
             u32_t in_edges_num  = vert_index->num_edges(vid, IN_EDGE);
             u32_t out_edges_num = vert_index->num_edges(vid, OUT_EDGE);
             const VERT_ATTR * neigh_attr_ptr = NULL;
+            std::vector<unsigned int> color_vec;
             for(u32_t i = 0; i < in_edges_num; ++i){
                 neigh_attr_ptr = vert_index->template get_in_neigh_attr<VERT_ATTR>(vid, i);
                 if(0 != neigh_attr_ptr->color){
+                    color_vec.push_back(neigh_attr_ptr->color);
                     continue;
                 }
                 if(neigh_attr_ptr->degree > this_vert->degree){
                     return;
                 }
-                else if(neigh_attr_ptr->degree == this_vert->degree && vert_index->get_in_neighbour(vid, i) > vid){
+                if(neigh_attr_ptr->degree == this_vert->degree && vert_index->get_in_neighbour(vid, i) > vid){
                     return;
                 }
             }
             for(u32_t i = 0; i < out_edges_num; ++i){
                 neigh_attr_ptr = vert_index->template get_out_neigh_attr<VERT_ATTR>(vid, i);
                 if(0 != neigh_attr_ptr->color){
+                    color_vec.push_back(neigh_attr_ptr->color);
                     continue;
                 }
                 if(neigh_attr_ptr->degree > this_vert->degree){
@@ -110,23 +113,7 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
                     return;
                 }
             }
-            //now, we have found the independent set, and then just select the color for the vertex
-            std::vector<unsigned int> color_vec;
-            unsigned int candidate_color = 1;
-            for(u32_t i = 0; i < in_edges_num; ++i){
-                neigh_attr_ptr = vert_index->template get_in_neigh_attr<VERT_ATTR>(vid, i);
-                if(0 == neigh_attr_ptr->color){
-                    continue;
-                }
-                color_vec.push_back(neigh_attr_ptr->color);
-            }
-            for(u32_t i = 0; i < out_edges_num; ++i){
-                neigh_attr_ptr = vert_index->template get_out_neigh_attr<VERT_ATTR>(vid, i);
-                if(0 == neigh_attr_ptr->color){
-                    continue;
-                }
-                color_vec.push_back(neigh_attr_ptr->color);
-            }
+            u32_t candidate_color = 1;
             std::sort(color_vec.begin(), color_vec.end());
             for(std::vector<unsigned int>::iterator iter = color_vec.begin(); iter!=color_vec.end(); ++iter){
                 if(*iter > candidate_color){

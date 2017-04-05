@@ -146,9 +146,6 @@ class community_detection_program : public Fog_program<community_detection_vert_
         int finalize(community_detection_vert_attr * va)
         {
             /*
-            for (unsigned int id = 0; id < 100; id++)
-                PRINT_DEBUG_LOG("CommunityDetection:result[%d], label = %u\n", id, (va+id)->label);
-                */
             std::map<u32_t, u32_t> counts_map;
             std::map<u32_t, u32_t>::iterator iter = counts_map.end();
             for (unsigned int id = 0; id <= gen_config.max_vert_id; ++id){
@@ -161,6 +158,7 @@ class community_detection_program : public Fog_program<community_detection_vert_
                 }
             }
             PRINT_DEBUG("this graph has %lu communities\n", counts_map.size());
+            */
 
             PRINT_DEBUG("CommunityDetection engine stops!\n");
             return ENGINE_STOP;
