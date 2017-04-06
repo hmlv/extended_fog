@@ -33,7 +33,8 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
 {
         int SG_CONTEXT_PHASE; //change the degree of vertex
         int UV_CONTEXT_PHASE; //select independent set and color the vertices in the independent set
-	public:
+        std::vector<unsigned int> * color_vec_ptr;
+    public:
 
         graph_coloring_program(int p_forward_backward_phase, bool p_init_sched, bool p_set_forward_backward, int scatter_gather_phase, int update_vertex_phase, int first_operation):Fog_program<VERT_ATTR, UPDATE_DATA, T>(p_forward_backward_phase, p_init_sched, p_set_forward_backward)
         {
@@ -41,6 +42,11 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
             this->SG_CONTEXT_PHASE = scatter_gather_phase;
             this->UV_CONTEXT_PHASE = update_vertex_phase;
             this->operation = first_operation;
+            this->color_vec_ptr = new std::vector<unsigned int>[gen_config.num_processors];
+            for(u32_t i = 0; i < gen_config.num_processors; ++i){
+                this->color_vec_ptr[i].resize(1000);
+                PRINT_DEBUG("vecotr:%u, size:%lu\n", i, this->color_vec_ptr[i].size());
+            }
         }
 
         //initialize each vertex of the graph
@@ -80,17 +86,28 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
 		// vert_attr_array: vertex attribute array;
         // vert_index: object which manage the edges of the vertex
 		//void update_vertex( u32_t vid, community_detection_vert_attr * this_vert, community_detection_vert_attr * vert_attr_array, index_vert_array<T> * vert_index )
-		void update_vertex( u32_t vid, VERT_ATTR * this_vert, index_vert_array<T> * vert_index )
+        void update_vertex( u32_t vid, VERT_ATTR * this_vert, index_vert_array<T> * vert_index )
         {
             //find the independent set, and color vertices in the independent set
             u32_t in_edges_num  = vert_index->num_edges(vid, IN_EDGE);
             u32_t out_edges_num = vert_index->num_edges(vid, OUT_EDGE);
             const VERT_ATTR * neigh_attr_ptr = NULL;
-            std::vector<unsigned int> color_vec;
+            //std::vector<unsigned int> color_vec;
+            u32_t partition_id = VID_TO_PARTITION(vid);
+            u32_t len = color_vec_ptr[partition_id].size();
+            u32_t idx = 0;
             for(u32_t i = 0; i < in_edges_num; ++i){
                 neigh_attr_ptr = vert_index->template get_in_neigh_attr<VERT_ATTR>(vid, i);
                 if(0 != neigh_attr_ptr->color){
-                    color_vec.push_back(neigh_attr_ptr->color);
+                    //color_vec.push_back(neigh_attr_ptr->color);
+                    if(idx < len){
+                        color_vec_ptr[partition_id][idx] = neigh_attr_ptr->color;
+                        ++idx;
+                    }
+                    else{
+                        color_vec_ptr[partition_id].push_back(neigh_attr_ptr->color);
+                        ++idx;
+                    }
                     continue;
                 }
                 if(neigh_attr_ptr->degree > this_vert->degree){
@@ -103,7 +120,15 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
             for(u32_t i = 0; i < out_edges_num; ++i){
                 neigh_attr_ptr = vert_index->template get_out_neigh_attr<VERT_ATTR>(vid, i);
                 if(0 != neigh_attr_ptr->color){
-                    color_vec.push_back(neigh_attr_ptr->color);
+                    //color_vec.push_back(neigh_attr_ptr->color);
+                    if(idx < len){
+                        color_vec_ptr[partition_id][idx] = neigh_attr_ptr->color;
+                        ++idx;
+                    }
+                    else{
+                        color_vec_ptr[partition_id].push_back(neigh_attr_ptr->color);
+                        ++idx;
+                    }
                     continue;
                 }
                 if(neigh_attr_ptr->degree > this_vert->degree){
@@ -114,7 +139,15 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
                 }
             }
             u32_t candidate_color = 1;
-            std::sort(color_vec.begin(), color_vec.end());
+            std::sort(color_vec_ptr[partition_id].begin(), color_vec_ptr[partition_id].begin() + idx);
+            for(u32_t i = 0; i < idx; ++i){
+                if(color_vec_ptr[partition_id][i] > candidate_color){
+                    break;
+                }else{
+                    ++candidate_color;
+                }
+            }
+            /*
             for(std::vector<unsigned int>::iterator iter = color_vec.begin(); iter!=color_vec.end(); ++iter){
                 if(*iter > candidate_color){
                     break;
@@ -122,6 +155,7 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
                     ++candidate_color;
                 }
             }
+            */
             this_vert->color = candidate_color;
             fog_engine<VERT_ATTR, UPDATE_DATA, T>::vote_to_halt(vid, this->UV_CONTEXT_PHASE);
             fog_engine<VERT_ATTR, UPDATE_DATA, T>::add_schedule_no_optimize(vid, this->SG_CONTEXT_PHASE);
@@ -180,6 +214,10 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, UPDATE_DATA, T>
             PRINT_DEBUG("this graph needs %u colors to color the graph\n", color);
 
             PRINT_DEBUG("GraphColoring engine stops!\n");
+            for(u32_t i = 0; i < gen_config.num_processors; ++i){
+                PRINT_DEBUG("vecotr:%u, size:%lu\n", i, this->color_vec_ptr[i].size());
+            }
+            delete []color_vec_ptr;
             return ENGINE_STOP;
         }
 };
