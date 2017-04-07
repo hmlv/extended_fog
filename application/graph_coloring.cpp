@@ -27,12 +27,18 @@ template <typename T>
 class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
 {
         int step_switch;//"0" means to caculate the degree of vertex, and "1" means select independent set and color the independent set
+        std::vector<unsigned int> * color_vec_ptr;
 	public:
 
         graph_coloring_program(int p_forward_backward_phase, bool p_init_sched, bool p_set_forward_backward):Fog_program<VERT_ATTR, char, T>(p_forward_backward_phase, p_init_sched, p_set_forward_backward)
         {
             this->need_all_neigh = true;
             this->step_switch    = 1;
+            this->color_vec_ptr = new std::vector<unsigned int>[gen_config.num_processors];
+            for(u32_t i = 0; i < gen_config.num_processors; ++i){
+                this->color_vec_ptr[i].resize(10000);
+                PRINT_DEBUG("vector:%u, size:%lu\n", i, this->color_vec_ptr[i].size());
+            }
         }
 
         //initialize each vertex of the graph
@@ -84,9 +90,20 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
                 u32_t in_edges_num  = vert_index->num_edges(vid, IN_EDGE);
                 u32_t out_edges_num = vert_index->num_edges(vid, OUT_EDGE);
                 const VERT_ATTR * neigh_attr_ptr = NULL;
+                u32_t partition_id = VID_TO_PARTITION(vid);
+                u32_t len = color_vec_ptr[partition_id].size();
+                u32_t idx = 0;
                 for(u32_t i = 0; i < in_edges_num; ++i){
                     neigh_attr_ptr = vert_index->template get_in_neigh_attr<VERT_ATTR>(vid, i);
                     if(0 != neigh_attr_ptr->color){
+                        if(idx < len){
+                            color_vec_ptr[partition_id][idx] = neigh_attr_ptr->color;
+                            ++idx;
+                        }
+                        else{
+                            color_vec_ptr[partition_id].push_back(neigh_attr_ptr->color);
+                            ++idx;
+                        }
                         continue;
                     }
                     if(neigh_attr_ptr->degree > this_vert->degree){
@@ -99,6 +116,14 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
                 for(u32_t i = 0; i < out_edges_num; ++i){
                     neigh_attr_ptr = vert_index->template get_out_neigh_attr<VERT_ATTR>(vid, i);
                     if(0 != neigh_attr_ptr->color){
+                        if(idx < len){
+                            color_vec_ptr[partition_id][idx] = neigh_attr_ptr->color;
+                            ++idx;
+                        }
+                        else{
+                            color_vec_ptr[partition_id].push_back(neigh_attr_ptr->color);
+                            ++idx;
+                        }
                         continue;
                     }
                     if(neigh_attr_ptr->degree > this_vert->degree){
@@ -109,8 +134,8 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
                     }
                 }
                 //now, we have found the independent set, and then just select the color for the vertex
-                std::vector<unsigned int> color_vec;
-                unsigned int candidate_color = 1;
+                //std::vector<unsigned int> color_vec;
+                /*
                 for(u32_t i = 0; i < in_edges_num; ++i){
                     neigh_attr_ptr = vert_index->template get_in_neigh_attr<VERT_ATTR>(vid, i);
                     if(0 == neigh_attr_ptr->color){
@@ -121,13 +146,24 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
                 for(u32_t i = 0; i < out_edges_num; ++i){
                     neigh_attr_ptr = vert_index->template get_out_neigh_attr<VERT_ATTR>(vid, i);
                     if(0 == neigh_attr_ptr->color){
+                        if(idx < len){
+                            color_vec_ptr[partition_id][idx] = neigh_attr_ptr->color;
+                            ++idx;
+                        }
+                        else{
+                            color_vec_ptr[partition_id].push_back(neigh_attr_ptr->color);
+                            ++idx;
+                        }
                         continue;
                     }
                     color_vec.push_back(neigh_attr_ptr->color);
                 }
-                std::sort(color_vec.begin(), color_vec.end());
-                for(std::vector<unsigned int>::iterator iter = color_vec.begin(); iter!=color_vec.end(); ++iter){
-                    if(*iter > candidate_color){
+                */
+                //std::sort(color_vec.begin(), color_vec.end());
+                std::sort(color_vec_ptr[partition_id].begin(), color_vec_ptr[partition_id].begin() + idx);
+                unsigned int candidate_color = 1;
+                for(u32_t i = 0; i < idx; ++i){
+                    if(color_vec_ptr[partition_id][i] > candidate_color){
                         break;
                     }else{
                         ++candidate_color;
@@ -167,6 +203,10 @@ class graph_coloring_program : public Fog_program<VERT_ATTR, char, T>
             PRINT_DEBUG("this graph needs %u colors to color the graph\n", color);
 
             PRINT_DEBUG("GraphColoring engine stops!\n");
+            for(u32_t i = 0; i < gen_config.num_processors; ++i){
+                PRINT_DEBUG("vecotr:%u, size:%lu\n", i, this->color_vec_ptr[i].size());
+            }
+            delete []color_vec_ptr;
             return ENGINE_STOP;
         }
 };
