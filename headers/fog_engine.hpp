@@ -179,6 +179,8 @@ class fog_engine{
         static void vote_to_halt(u32_t task_vid, u32_t CONTEXT_PHASE);
 
         void hybrid_to_init_sched_update_buf();
+
+        void set_context_data(u32_t CONTEXT_PHASE);
 };
 template <typename VA, typename U, typename T>
 index_vert_array<T> * fog_engine<VA, U, T>::vert_index;

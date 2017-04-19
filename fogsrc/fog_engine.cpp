@@ -136,6 +136,9 @@ void fog_engine<VA, U, T>::operator() ()
          init_phase(glo_loop);
          if (global_or_target == TARGET_ENGINE)
          {
+             //because the add_schedule_no_optimize() exist thread race, so the context_data
+             //will not changed in add_schedule_no_optimize(), just use the set_context_data() to modify the context_data
+             set_context_data(m_alg_ptr->CONTEXT_PHASE);
              m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
              if( m_alg_ptr->num_tasks_to_sched == 0){
                  break;
@@ -252,7 +255,9 @@ void fog_engine<VA, U, T>::operator() ()
 
                  update_vertices( 1 - m_alg_ptr->CONTEXT_PHASE);
 
-                 //after gather
+                 //because the add_schedule_no_optimize() exist thread race, so the context_data
+                 //will not changed in add_schedule_no_optimize(), just use the set_context_data() to modify the context_data
+                 set_context_data(m_alg_ptr->CONTEXT_PHASE);
                  m_alg_ptr->num_tasks_to_sched = cal_true_bits_size(m_alg_ptr->CONTEXT_PHASE);
 
                  ret = m_alg_ptr->after_iteration();
@@ -3788,8 +3793,8 @@ template <typename VA, typename U, typename T>
 void fog_engine<VA, U, T>::add_schedule_no_optimize(u32_t task_vid, u32_t CONTEXT_PHASE)
 {
     u32_t partition_id = 0;
-    u32_t max_vert = 0;
-    u32_t min_vert = 0;
+    //u32_t max_vert = 0;
+    //u32_t min_vert = 0;
 
     partition_id = VID_TO_PARTITION(task_vid);
     assert(task_vid <= gen_config.max_vert_id);
@@ -3802,11 +3807,12 @@ void fog_engine<VA, U, T>::add_schedule_no_optimize(u32_t task_vid, u32_t CONTEX
     my_context_data = CONTEXT_PHASE > 0 ? my_sched_bitmap_manager->p_context_data1 : my_sched_bitmap_manager->p_context_data0;
     next_bitmap = my_context_data->p_bitmap;
 
-    max_vert = my_context_data->per_max_vert_id;
-    min_vert = my_context_data->per_min_vert_id;
+    //max_vert = my_context_data->per_max_vert_id;
+    //min_vert = my_context_data->per_min_vert_id;
 
-    my_context_data->per_bits_true_size++;
     next_bitmap->set_value(task_vid);
+    /*
+    my_context_data->per_bits_true_size++;
     if (task_vid <= min_vert)
     {
         min_vert = task_vid;
@@ -3816,6 +3822,45 @@ void fog_engine<VA, U, T>::add_schedule_no_optimize(u32_t task_vid, u32_t CONTEX
     {
         max_vert = task_vid;
         my_context_data->per_max_vert_id = max_vert;
+    }
+    */
+}
+template <typename VA, typename U, typename T>
+void fog_engine<VA, U, T>::set_context_data(u32_t CONTEXT_PHASE){
+
+    u32_t partition_id = 0;
+    u32_t max_vert = 0;
+    u32_t min_vert = 0;
+
+    sched_bitmap_manager * my_sched_bitmap_manager;
+    struct context_data * my_context_data;
+    bitmap * next_bitmap = NULL;
+    for(u32_t vid = gen_config.min_vert_id; vid <= gen_config.max_vert_id; ++vid){
+        partition_id = VID_TO_PARTITION(vid);
+        assert(partition_id < gen_config.num_processors);
+
+        my_sched_bitmap_manager = seg_config->per_cpu_info_list[partition_id]->target_sched_manager;
+        my_context_data = CONTEXT_PHASE > 0 ? my_sched_bitmap_manager->p_context_data1 : my_sched_bitmap_manager->p_context_data0;
+        next_bitmap = my_context_data->p_bitmap;
+
+        max_vert = my_context_data->per_max_vert_id;
+        min_vert = my_context_data->per_min_vert_id;
+
+        if(next_bitmap->get_value(vid)!=0){
+            my_context_data->per_bits_true_size++;
+            if (vid <= min_vert)
+            {
+                min_vert = vid;
+                my_context_data->per_min_vert_id = min_vert;
+            }
+            if (vid >= max_vert)
+            {
+                max_vert = vid;
+                my_context_data->per_max_vert_id = max_vert;
+            }
+
+
+        }
     }
 }
 

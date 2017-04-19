@@ -1101,6 +1101,7 @@ void cpu_work<VA, U, T>::operator() ( u32_t processor_id, barrier *sync, index_v
                 current_bitmap->clear_value(vid);
                 my_context_data->per_bits_true_size--;
             }
+            assert(my_context_data->per_bits_true_size==0);
             break;
         }
         case VOTE_TO_HALT_UPDATE_VERTICES:

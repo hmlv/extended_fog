@@ -35,7 +35,18 @@ static void setup_options_fog(int argc, const char* argv[])
     ( "processors,p",  boost::program_options::value<unsigned long>()->default_value(4),
       "Number of processors")
     ( "diskthreads,d",  boost::program_options::value<unsigned long>()->default_value(2),
-      "Number of Disk(I/O) threads");
+      "Number of Disk(I/O) threads")
+	//following are the parameters for appilcations
+	// pagerank
+    ("pagerank::niters", boost::program_options::value<unsigned long>()->default_value(10),
+     "number of iterations for pagerank.")
+	// sssp
+    //("sssp::source", boost::program_options::value<unsigned long>()->default_value(0),
+    //"source vertex id for sssp")
+    ("bfs::bfs-root", boost::program_options::value<unsigned long>()->default_value(0),
+     "bfs root for bfs");
+    //("spmv::niters", boost::program_options::value<unsigned long>()->default_value(10),
+    // "number of iterations for spmv");
 
   try {
     boost::program_options::store(boost::program_options::parse_command_line(argc,
