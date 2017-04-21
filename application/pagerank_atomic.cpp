@@ -18,8 +18,10 @@
 //this structure will define the "attribute" of one vertex, the only member will be the rank
 // value of the vertex
 struct pagerank_vert_attr{
-    std::atomic<float> rank;
-    u32_t out_degree;
+    //std::atomic<float> rank;
+    //u32_t out_degree;
+    float rank;
+    std::atomic<float> for_neigh_rank;
 };
 typedef pagerank_vert_attr VERT_ATTR;
 typedef char ALG_UPDATE;
@@ -40,7 +42,11 @@ class pagerank_program : public Fog_program<pagerank_vert_attr, char, T>
         void init( u32_t vid, pagerank_vert_attr* this_vert, index_vert_array<T> * vert_index )
         {
             this_vert->rank = 1.0;
-            this_vert->out_degree = vert_index->num_edges(vid, OUT_EDGE);
+            this_vert->for_neigh_rank.store(1.0, std::memory_order_relaxed);
+            //this_vert->out_degree = vert_index->num_edges(vid, OUT_EDGE);
+            if(vert_index->num_edges(vid, IN_EDGE) == 0){
+                fog_engine<VERT_ATTR, ALG_UPDATE, T>::vote_to_halt(vid, this->CONTEXT_PHASE);
+            }
         }
 
 		// update one vertex. Explain the parameters:
@@ -51,20 +57,16 @@ class pagerank_program : public Fog_program<pagerank_vert_attr, char, T>
 		//void update_vertex( u32_t vid, pagerank_vert_attr * this_vert, pagerank_vert_attr * vert_attr_array, index_vert_array<T> * vert_index )
 		void update_vertex( u32_t vid, pagerank_vert_attr * this_vert, index_vert_array<T> * vert_index )
 		{
-            u32_t in_edges_num  = 0L;
             float sum           = 0;
-            in_edges_num = vert_index->num_edges(vid, IN_EDGE);
             const pagerank_vert_attr* neigh_attr = NULL;
-            if(in_edges_num == 0){
-                fog_engine<VERT_ATTR, ALG_UPDATE, T>::vote_to_halt(vid, this->CONTEXT_PHASE);
-                return;   //trivial vertex
-            }
+            u32_t in_edges_num  = vert_index->num_edges(vid, IN_EDGE);
             //scan the in-neighbours
             for(u32_t i = 0; i < in_edges_num; ++i){
                 neigh_attr = vert_index->template get_in_neigh_attr<pagerank_vert_attr>(vid, i);
-                sum = sum + (neigh_attr->rank.load(std::memory_order_relaxed) / neigh_attr->out_degree);
+                sum = sum + neigh_attr->for_neigh_rank.load(std::memory_order_relaxed);
             }
-            this_vert->rank.store(sum*DAMPINGFACTOR + 1 - DAMPINGFACTOR, std::memory_order_relaxed);
+            this_vert->rank = sum*DAMPINGFACTOR + 1 - DAMPINGFACTOR;
+            this_vert->for_neigh_rank.store(this_vert->rank / vert_index->num_edges(vid, OUT_EDGE), std::memory_order_relaxed);
         }
 
         void before_iteration()
@@ -87,7 +89,7 @@ class pagerank_program : public Fog_program<pagerank_vert_attr, char, T>
         {
             for (unsigned int id = 0; id < 100; id++)
             {
-                PRINT_DEBUG_LOG("PageRank:result[%d], rank = %f\n", id, (va+id)->rank.load(std::memory_order_relaxed));
+                PRINT_DEBUG_LOG("PageRank:result[%d], rank = %f\n", id, (va+id)->rank);
             }
 
             PRINT_DEBUG("PageRank engine stops!\n");
