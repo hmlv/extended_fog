@@ -23,9 +23,9 @@ enum algorithm_operation{
 //the typename T_EDGE is the edge file-type(type1 or type2)
 template <typename VERT_ATTR, typename ALG_UPDATE, typename T_EDGE>
 class Fog_program{
-	public:
+    public:
         /*
-         * These variablies below must be set, beacuse the FOGP engine will use them
+         * These variablies below must be set, beacuse the FOG engine will use them
          * to control the algorithm.
          */
         u32_t num_tasks_to_sched;
@@ -49,27 +49,35 @@ class Fog_program{
         }
 
         virtual ~Fog_program(){};
+        //initialize each vertex of the graph
+        virtual void init( u32_t vid, VERT_ATTR* this_vert, index_vert_array<T_EDGE> * vert_index ) = 0;
 
-		//initialize each vertex of the graph
-		virtual void init( u32_t vid, VERT_ATTR* this_vert, index_vert_array<T_EDGE> * vert_index ) = 0;
+        /*Notes:
+         * 1) this member fuction will be used to scatter ONE edge of a vertex.
+         * 2) the return value will be a pointer to the generated update.
+         *    However, it is possible that no update will be generated at all!
+         *    In that case, this member function should return NULL.
+         * 3) This function should be "re-enterable", therefore, no global variables
+         *    should be visited, or visited very carefully.
+         */
+        virtual void scatter_one_edge(VERT_ATTR* this_vert,
+                T_EDGE &this_edge, // type1 or type2 , only available for FORWARD_TRAVERSAL
+                u32_t PARAMETER_BY_YOURSELF,
+                update<ALG_UPDATE> &u){};
 
-		//Notes:
-		// 1) this member fuction will be used to scatter ONE edge of a vertex.
-		// 2) the return value will be a pointer to the generated update.
-		//	However, it is possible that no update will be generated at all!
-		//	In that case, this member function should return NULL.
-		// 3) This function should be "re-enterable", therefore, no global variables
-		//	should be visited, or visited very carefully.
-		virtual void scatter_one_edge(VERT_ATTR* this_vert,
-					T_EDGE &this_edge, // type1 or type2 , only available for FORWARD_TRAVERSAL
-					u32_t PARAMETER_BY_YOURSELF,
-                    update<ALG_UPDATE> &u){};
+        /* Gather one update. Explain the parameters:
+         * vid: the vertex id of destination vertex;
+         * va: the attribute of destination vertex;
+         * u: the update from the "update" buffer.
+         */
+        virtual void gather_one_update( u32_t vid, VERT_ATTR * vert_attr, update<ALG_UPDATE> * u ){};
 
-		// Gather one update. Explain the parameters:
-		// vid: the vertex id of destination vertex;
-		// va: the attribute of destination vertex;
-		// u: the update from the "update" buffer.
-		virtual void gather_one_update( u32_t vid, VERT_ATTR * vert_attr, update<ALG_UPDATE> * u ){};
+        /* update_vertex: calculate the attribute of vertex. Explain the parameters:'
+         * vid: the vertex id of vertex;
+         * this_vert: the attribute of vertex;
+         * vert_index: the object to access the neighbors of vertex
+         */
+        virtual void update_vertex(u32_t vid, VERT_ATTR * this_vert, index_vert_array<T_EDGE>* vert_index){};
 
         //A function before every iteration
         //This function will be used to print some important information about the algorithm
@@ -81,8 +89,7 @@ class Fog_program{
         //A function at the end.
         virtual int finalize(VERT_ATTR * va) = 0;
 
-        virtual void update_vertex(u32_t vid, VERT_ATTR * this_vert, index_vert_array<T_EDGE>* vert_index){};
-
+        //function for graph mutation
         virtual int num_of_remain_partitions(){return 0;};
         virtual int judge_for_filter(VERT_ATTR * this_vert){return 0;};
 
